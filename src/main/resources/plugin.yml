@@ -1,0 +1,46 @@
+name: BrakkeBoysCORE
+version: '1.0.0'
+main: com.finnb.plugin.BrakkeBoysCORE
+description: Core plugin for BrakkeBoys server
+api-version: '1.21'
+authors:
+  - FinnB
+
+commands:
+  horselock:
+    description: Lock or unlock the horse you're riding or looking at
+    usage: /<command>
+    aliases:
+      - hl
+      - lockh
+  horseadd:
+    description: Add or remove a player from your horse's allowed riders
+    usage: /<command> <player>
+    aliases:
+      - ha
+      - addh
+  lock:
+    description: Lock or unlock the chest/door you're looking at
+    usage: /<command>
+  setmaxlocks:
+    description: Set the maximum number of chests a player can lock
+    usage: /<command> <player> <amount>
+    permission: brakkeboyscore.setmaxlocks
+  setmaxdoorlocks:
+    description: Set the maximum number of doors/trapdoors/fence gates a player can lock
+    usage: /<command> <player> <amount>
+    permission: brakkeboyscore.setmaxdoorlocks
+  resetlocks:
+    description: Reset all chest and door locks for a player
+    usage: /<command> <player>
+    permission: brakkeboyscore.resetlocks
+  add:
+    description: Add or remove a player from your locked chest/door
+    usage: /<command> <player>
+  help:
+    description: Show all available commands
+    usage: /<command>
+    aliases:
+      - bbc
+      - brakkeboyscore
+
