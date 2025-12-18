@@ -1,6 +1,7 @@
 package com.finnb.plugin.listeners;
 
 import com.finnb.plugin.BrakkeBoysCORE;
+import com.finnb.plugin.listeners.PasscodeGUIListener;
 import com.finnb.plugin.managers.ChestLockManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -54,40 +55,62 @@ public class ChestProtectionListener implements Listener {
         if (isChest && manager.isChestLocked(event.getClickedBlock().getLocation())) {
             // Check if the player can access (owner or allowed user)
             if (!manager.canAccessChest(event.getClickedBlock().getLocation(), player.getUniqueId())) {
-                // Not allowed - cancel the interaction
-                event.setCancelled(true);
+                // Check for temporary access (from passcode)
+                PasscodeGUIListener guiListener = plugin.getPasscodeGUIListener();
+                if (guiListener.hasTemporaryChestAccess(player.getUniqueId())) {
+                    // Allow access
+                    return;
+                }
+                
+                // Check if it has a passcode
+                if (manager.hasChestPasscode(event.getClickedBlock().getLocation())) {
+                    // Open passcode GUI
+                    event.setCancelled(true);
+                    guiListener.openPasscodeGUI(player, event.getClickedBlock().getLocation(), false);
+                } else {
+                    // Not allowed - cancel the interaction
+                    event.setCancelled(true);
 
-                Title.Times times = Title.Times.times(
-                        Duration.ofMillis(200),
-                        Duration.ofMillis(2400),
-                        Duration.ofMillis(600)
-                );
+                    Title.Times times = Title.Times.times(
+                            Duration.ofMillis(200),
+                            Duration.ofMillis(2400),
+                            Duration.ofMillis(600)
+                    );
 
-                Title title = Title.title(
-                        Component.text("🔒 VERGRENDELD").color(NamedTextColor.RED).decorate(TextDecoration.BOLD),
-                        Component.text("Deze kist is niet van jou!").color(NamedTextColor.GRAY),
-                        times
-                );
-                player.showTitle(title);
+                    Title title = Title.title(
+                            Component.text("🔒 VERGRENDELD").color(NamedTextColor.RED).decorate(TextDecoration.BOLD),
+                            Component.text("Deze kist is niet van jou!").color(NamedTextColor.GRAY),
+                            times
+                    );
+                    player.showTitle(title);
+                }
             }
         } else if (isDoor && manager.isDoorLocked(event.getClickedBlock().getLocation())) {
             // Check if the player can access (owner or allowed user)
             if (!manager.canAccessDoor(event.getClickedBlock().getLocation(), player.getUniqueId())) {
-                // Not allowed - cancel the interaction
-                event.setCancelled(true);
+                // Check if it has a passcode
+                if (manager.hasDoorPasscode(event.getClickedBlock().getLocation())) {
+                    // Open passcode GUI
+                    event.setCancelled(true);
+                    PasscodeGUIListener guiListener = plugin.getPasscodeGUIListener();
+                    guiListener.openPasscodeGUI(player, event.getClickedBlock().getLocation(), true);
+                } else {
+                    // Not allowed - cancel the interaction
+                    event.setCancelled(true);
 
-                Title.Times times = Title.Times.times(
-                        Duration.ofMillis(200),
-                        Duration.ofMillis(2400),
-                        Duration.ofMillis(600)
-                );
+                    Title.Times times = Title.Times.times(
+                            Duration.ofMillis(200),
+                            Duration.ofMillis(2400),
+                            Duration.ofMillis(600)
+                    );
 
-                Title title = Title.title(
-                        Component.text("🔒 VERGRENDELD").color(NamedTextColor.RED).decorate(TextDecoration.BOLD),
-                        Component.text("Deze deur is niet van jou!").color(NamedTextColor.GRAY),
-                        times
-                );
-                player.showTitle(title);
+                    Title title = Title.title(
+                            Component.text("🔒 VERGRENDELD").color(NamedTextColor.RED).decorate(TextDecoration.BOLD),
+                            Component.text("Deze deur is niet van jou!").color(NamedTextColor.GRAY),
+                            times
+                    );
+                    player.showTitle(title);
+                }
             }
         }
     }

@@ -10,6 +10,7 @@ import com.finnb.plugin.commands.SetMaxDoorLocksCommand;
 import com.finnb.plugin.commands.SetMaxLocksCommand;
 import com.finnb.plugin.listeners.ChestProtectionListener;
 import com.finnb.plugin.listeners.HorseProtectionListener;
+import com.finnb.plugin.listeners.PasscodeGUIListener;
 import com.finnb.plugin.managers.ChestLockManager;
 import com.finnb.plugin.managers.HorseLockManager;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -18,6 +19,7 @@ public class BrakkeBoysCORE extends JavaPlugin {
 
     private HorseLockManager horseLockManager;
     private ChestLockManager chestLockManager;
+    private PasscodeGUIListener passcodeGUIListener;
 
     @Override
     public void onEnable() {
@@ -58,6 +60,9 @@ public class BrakkeBoysCORE extends JavaPlugin {
         // Register event listeners
         getServer().getPluginManager().registerEvents(new HorseProtectionListener(this), this);
         getServer().getPluginManager().registerEvents(new ChestProtectionListener(this), this);
+        
+        passcodeGUIListener = new PasscodeGUIListener(this);
+        getServer().getPluginManager().registerEvents(passcodeGUIListener, this);
     }
 
     @Override
@@ -80,6 +85,10 @@ public class BrakkeBoysCORE extends JavaPlugin {
 
     public ChestLockManager getChestLockManager() {
         return chestLockManager;
+    }
+
+    public PasscodeGUIListener getPasscodeGUIListener() {
+        return passcodeGUIListener;
     }
 }
 

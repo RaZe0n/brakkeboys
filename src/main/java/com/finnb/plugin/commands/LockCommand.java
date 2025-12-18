@@ -60,16 +60,27 @@ public class LockCommand implements CommandExecutor {
                 Duration.ofMillis(800)
         );
 
+        // Parse optional passcode
+        String passcode = null;
+        if (args.length > 0) {
+            passcode = args[0];
+            // Validate passcode is numeric
+            if (!passcode.matches("\\d+")) {
+                player.sendMessage(Component.text("Pincode moet alleen cijfers bevatten!").color(NamedTextColor.RED));
+                return true;
+            }
+        }
+
         if (isChest) {
-            handleChest(player, targetBlock, manager, times);
+            handleChest(player, targetBlock, manager, times, passcode);
         } else if (isDoor) {
-            handleDoor(player, targetBlock, manager, times);
+            handleDoor(player, targetBlock, manager, times, passcode);
         }
 
         return true;
     }
 
-    private void handleChest(Player player, Block block, ChestLockManager manager, Title.Times times) {
+    private void handleChest(Player player, Block block, ChestLockManager manager, Title.Times times, String passcode) {
         // Check if already locked
         if (manager.isChestLocked(block.getLocation())) {
             if (manager.isChestOwner(block.getLocation(), player.getUniqueId())) {
@@ -89,7 +100,7 @@ public class LockCommand implements CommandExecutor {
         }
 
         // Try to lock the chest
-        if (!manager.lockChest(block.getLocation(), player.getUniqueId())) {
+        if (!manager.lockChest(block.getLocation(), player.getUniqueId(), passcode)) {
             int remaining = manager.getRemainingChestLocks(player.getUniqueId());
             if (remaining == 0) {
                 player.sendMessage(Component.text("Je hebt je maximale aantal kisten vergrendeld!").color(NamedTextColor.RED));
@@ -101,16 +112,17 @@ public class LockCommand implements CommandExecutor {
 
         // Success - show title
         int remaining = manager.getRemainingChestLocks(player.getUniqueId());
+        String subtitle = passcode != null ? "Pincode: " + passcode : "Je hebt nog " + remaining + " over";
 
         Title title = Title.title(
                 Component.text("🔒 KIST VERGRENDELD").color(NamedTextColor.GOLD).decorate(TextDecoration.BOLD),
-                Component.text("Je hebt nog " + remaining + " over").color(NamedTextColor.GRAY),
+                Component.text(subtitle).color(NamedTextColor.GRAY),
                 times
         );
         player.showTitle(title);
     }
 
-    private void handleDoor(Player player, Block block, ChestLockManager manager, Title.Times times) {
+    private void handleDoor(Player player, Block block, ChestLockManager manager, Title.Times times, String passcode) {
         // Check if already locked
         if (manager.isDoorLocked(block.getLocation())) {
             if (manager.isDoorOwner(block.getLocation(), player.getUniqueId())) {
@@ -131,7 +143,7 @@ public class LockCommand implements CommandExecutor {
         }
 
         // Try to lock the door
-        if (!manager.lockDoor(block.getLocation(), player.getUniqueId())) {
+        if (!manager.lockDoor(block.getLocation(), player.getUniqueId(), passcode)) {
             int remaining = manager.getRemainingDoorLocks(player.getUniqueId());
             if (remaining == 0) {
                 player.sendMessage(Component.text("Je hebt je maximale aantal deuren vergrendeld!").color(NamedTextColor.RED));
@@ -144,10 +156,11 @@ public class LockCommand implements CommandExecutor {
         // Success - show title
         int remaining = manager.getRemainingDoorLocks(player.getUniqueId());
         String blockType = getBlockTypeName(block);
+        String subtitle = passcode != null ? "Pincode: " + passcode : "Je hebt nog " + remaining + " over";
 
         Title title = Title.title(
                 Component.text("🔒 " + blockType.toUpperCase() + " VERGRENDELD").color(NamedTextColor.GOLD).decorate(TextDecoration.BOLD),
-                Component.text("Je hebt nog " + remaining + " over").color(NamedTextColor.GRAY),
+                Component.text(subtitle).color(NamedTextColor.GRAY),
                 times
         );
         player.showTitle(title);

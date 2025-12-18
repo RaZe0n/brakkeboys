@@ -25,6 +25,8 @@ public class ChestLockManager {
     private final Map<String, UUID> lockedDoors; // Location string -> Owner UUID (doors, trapdoors, fence gates)
     private final Map<String, Set<UUID>> allowedChestUsers; // Location string -> Set of allowed player UUIDs
     private final Map<String, Set<UUID>> allowedDoorUsers; // Location string -> Set of allowed player UUIDs
+    private final Map<String, String> chestPasscodes; // Location string -> Passcode
+    private final Map<String, String> doorPasscodes; // Location string -> Passcode
     private final Map<UUID, Integer> maxChestLocks; // Player UUID -> Max chest locks allowed
     private final Map<UUID, Integer> maxDoorLocks; // Player UUID -> Max door locks allowed
     private final File chestDataFile;
@@ -37,6 +39,8 @@ public class ChestLockManager {
         this.lockedDoors = new HashMap<>();
         this.allowedChestUsers = new HashMap<>();
         this.allowedDoorUsers = new HashMap<>();
+        this.chestPasscodes = new HashMap<>();
+        this.doorPasscodes = new HashMap<>();
         this.maxChestLocks = new HashMap<>();
         this.maxDoorLocks = new HashMap<>();
         this.chestDataFile = new File(plugin.getDataFolder(), "locked_chests.yml");
@@ -48,6 +52,13 @@ public class ChestLockManager {
      * Lock a chest at a location
      */
     public boolean lockChest(Location location, UUID ownerUuid) {
+        return lockChest(location, ownerUuid, null);
+    }
+
+    /**
+     * Lock a chest at a location with optional passcode
+     */
+    public boolean lockChest(Location location, UUID ownerUuid, String passcode) {
         String locKey = locationToString(location);
         
         // Check if already locked
@@ -64,6 +75,9 @@ public class ChestLockManager {
         }
 
         lockedChests.put(locKey, ownerUuid);
+        if (passcode != null && !passcode.isEmpty()) {
+            chestPasscodes.put(locKey, passcode);
+        }
         saveChestData();
         return true;
     }
@@ -72,6 +86,13 @@ public class ChestLockManager {
      * Lock a door/trapdoor/fence gate at a location
      */
     public boolean lockDoor(Location location, UUID ownerUuid) {
+        return lockDoor(location, ownerUuid, null);
+    }
+
+    /**
+     * Lock a door/trapdoor/fence gate at a location with optional passcode
+     */
+    public boolean lockDoor(Location location, UUID ownerUuid, String passcode) {
         String locKey = locationToString(location);
         
         // Check if already locked (check both blocks for doors)
@@ -89,12 +110,18 @@ public class ChestLockManager {
 
         // Lock this block
         lockedDoors.put(locKey, ownerUuid);
+        if (passcode != null && !passcode.isEmpty()) {
+            doorPasscodes.put(locKey, passcode);
+        }
         
         // If it's a door, also lock the other half
         Location otherHalf = getDoorOtherHalf(location);
         if (otherHalf != null) {
             String otherKey = locationToString(otherHalf);
             lockedDoors.put(otherKey, ownerUuid);
+            if (passcode != null && !passcode.isEmpty()) {
+                doorPasscodes.put(otherKey, passcode);
+            }
         }
         
         saveDoorData();
@@ -108,6 +135,7 @@ public class ChestLockManager {
         String locKey = locationToString(location);
         lockedChests.remove(locKey);
         allowedChestUsers.remove(locKey);
+        chestPasscodes.remove(locKey);
         saveChestData();
     }
 
@@ -118,6 +146,7 @@ public class ChestLockManager {
         String locKey = locationToString(location);
         lockedDoors.remove(locKey);
         allowedDoorUsers.remove(locKey);
+        doorPasscodes.remove(locKey);
         
         // If it's a door, also unlock the other half
         Location otherHalf = getDoorOtherHalf(location);
@@ -125,6 +154,7 @@ public class ChestLockManager {
             String otherKey = locationToString(otherHalf);
             lockedDoors.remove(otherKey);
             allowedDoorUsers.remove(otherKey);
+            doorPasscodes.remove(otherKey);
         }
         
         saveDoorData();
@@ -343,6 +373,61 @@ public class ChestLockManager {
     }
 
     /**
+     * Get passcode for a chest
+     */
+    public String getChestPasscode(Location location) {
+        return chestPasscodes.get(locationToString(location));
+    }
+
+    /**
+     * Get passcode for a door
+     */
+    public String getDoorPasscode(Location location) {
+        String locKey = locationToString(location);
+        String passcode = doorPasscodes.get(locKey);
+        if (passcode != null) {
+            return passcode;
+        }
+        // Check the other half if it's a door
+        Location otherHalf = getDoorOtherHalf(location);
+        if (otherHalf != null) {
+            String otherKey = locationToString(otherHalf);
+            return doorPasscodes.get(otherKey);
+        }
+        return null;
+    }
+
+    /**
+     * Check if a chest has a passcode
+     */
+    public boolean hasChestPasscode(Location location) {
+        return getChestPasscode(location) != null;
+    }
+
+    /**
+     * Check if a door has a passcode
+     */
+    public boolean hasDoorPasscode(Location location) {
+        return getDoorPasscode(location) != null;
+    }
+
+    /**
+     * Verify passcode for a chest
+     */
+    public boolean verifyChestPasscode(Location location, String input) {
+        String passcode = getChestPasscode(location);
+        return passcode != null && passcode.equals(input);
+    }
+
+    /**
+     * Verify passcode for a door
+     */
+    public boolean verifyDoorPasscode(Location location, String input) {
+        String passcode = getDoorPasscode(location);
+        return passcode != null && passcode.equals(input);
+    }
+
+    /**
      * Get how many chests a player has locked
      */
     public int getPlayerChestLockCount(UUID playerUuid) {
@@ -513,6 +598,12 @@ public class ChestLockManager {
             String chestPath = "chests." + entry.getKey();
             config.set(chestPath + ".owner", entry.getValue().toString());
 
+            // Save passcode
+            String passcode = chestPasscodes.get(entry.getKey());
+            if (passcode != null) {
+                config.set(chestPath + ".passcode", passcode);
+            }
+
             // Save allowed users
             Set<UUID> users = allowedChestUsers.get(entry.getKey());
             if (users != null && !users.isEmpty()) {
@@ -543,6 +634,12 @@ public class ChestLockManager {
         for (Map.Entry<String, UUID> entry : lockedDoors.entrySet()) {
             String doorPath = "doors." + entry.getKey();
             config.set(doorPath + ".owner", entry.getValue().toString());
+
+            // Save passcode
+            String passcode = doorPasscodes.get(entry.getKey());
+            if (passcode != null) {
+                config.set(doorPath + ".passcode", passcode);
+            }
 
             // Save allowed users
             Set<UUID> users = allowedDoorUsers.get(entry.getKey());
@@ -587,6 +684,12 @@ public class ChestLockManager {
                     if (ownerStr != null) {
                         UUID ownerUuid = UUID.fromString(ownerStr);
                         lockedChests.put(locKey, ownerUuid);
+                    }
+
+                    // Load passcode
+                    String passcode = config.getString(chestPath + ".passcode");
+                    if (passcode != null && !passcode.isEmpty()) {
+                        chestPasscodes.put(locKey, passcode);
                     }
 
                     // Load allowed users
@@ -635,6 +738,12 @@ public class ChestLockManager {
                     if (ownerStr != null) {
                         UUID ownerUuid = UUID.fromString(ownerStr);
                         lockedDoors.put(locKey, ownerUuid);
+                    }
+
+                    // Load passcode
+                    String passcode = config.getString(doorPath + ".passcode");
+                    if (passcode != null && !passcode.isEmpty()) {
+                        doorPasscodes.put(locKey, passcode);
                     }
 
                     // Load allowed users
