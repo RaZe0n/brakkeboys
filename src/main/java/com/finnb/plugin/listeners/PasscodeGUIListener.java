@@ -33,6 +33,7 @@ public class PasscodeGUIListener implements Listener {
     private final Map<UUID, Location> playerBlockLocations = new HashMap<>(); // Player UUID -> block location
     private final Map<UUID, Boolean> playerIsDoor = new HashMap<>(); // Player UUID -> is door
     private final Set<UUID> temporaryChestAccess = new HashSet<>(); // Players with temporary chest access
+    private final Map<String, Long> temporaryDoorAccess = new HashMap<>(); // Location string -> timestamp when access expires
 
     public PasscodeGUIListener(BrakkeBoysCORE plugin) {
         this.plugin = plugin;
@@ -83,6 +84,36 @@ public class PasscodeGUIListener implements Listener {
                 player.sendMessage(Component.text("✓ Pincode correct!").color(NamedTextColor.GREEN));
 
                 if (isDoor) {
+                    // Grant temporary door access (5 seconds) for this specific location and the other half
+                    String locationKey = blockLocation.getWorld().getName() + "," + 
+                                       blockLocation.getBlockX() + "," + 
+                                       blockLocation.getBlockY() + "," + 
+                                       blockLocation.getBlockZ();
+                    long expiryTime = System.currentTimeMillis() + 5000;
+                    temporaryDoorAccess.put(locationKey, expiryTime);
+                    
+                    // Also grant access to the other half of the door
+                    org.bukkit.block.Block block = blockLocation.getBlock();
+                    org.bukkit.block.data.BlockData blockData = block.getBlockData();
+                    String otherLocationKey = null;
+                    if (blockData instanceof Door door) {
+                        Door.Half half = door.getHalf();
+                        org.bukkit.block.Block otherHalf;
+                        if (half == Door.Half.BOTTOM) {
+                            otherHalf = block.getRelative(0, 1, 0);
+                        } else {
+                            otherHalf = block.getRelative(0, -1, 0);
+                        }
+                        otherLocationKey = otherHalf.getWorld().getName() + "," + 
+                                         otherHalf.getX() + "," + 
+                                         otherHalf.getY() + "," + 
+                                         otherHalf.getZ();
+                        temporaryDoorAccess.put(otherLocationKey, expiryTime);
+                    }
+                    
+                    // Store the other location key for cleanup
+                    final String finalOtherLocationKey = otherLocationKey;
+                    
                     // Open the door
                     openDoor(blockLocation);
                     // Close after 5 seconds
@@ -90,6 +121,11 @@ public class PasscodeGUIListener implements Listener {
                         @Override
                         public void run() {
                             closeDoor(blockLocation);
+                            temporaryDoorAccess.remove(locationKey);
+                            // Also remove the other half
+                            if (finalOtherLocationKey != null) {
+                                temporaryDoorAccess.remove(finalOtherLocationKey);
+                            }
                         }
                     }.runTaskLater(plugin, 100L); // 5 seconds = 100 ticks
                 } else {
@@ -155,6 +191,47 @@ public class PasscodeGUIListener implements Listener {
 
     public boolean hasTemporaryChestAccess(UUID playerUuid) {
         return temporaryChestAccess.contains(playerUuid);
+    }
+
+    public boolean hasTemporaryDoorAccess(Location location) {
+        // Check this location
+        String locationKey = location.getWorld().getName() + "," + 
+                            location.getBlockX() + "," + 
+                            location.getBlockY() + "," + 
+                            location.getBlockZ();
+        Long expiryTime = temporaryDoorAccess.get(locationKey);
+        if (expiryTime != null && System.currentTimeMillis() <= expiryTime) {
+            return true;
+        }
+        
+        // Check the other half of the door (if it's a door)
+        org.bukkit.block.Block block = location.getBlock();
+        org.bukkit.block.data.BlockData blockData = block.getBlockData();
+        if (blockData instanceof Door door) {
+            Door.Half half = door.getHalf();
+            org.bukkit.block.Block otherHalf;
+            if (half == Door.Half.BOTTOM) {
+                otherHalf = block.getRelative(0, 1, 0);
+            } else {
+                otherHalf = block.getRelative(0, -1, 0);
+            }
+            
+            String otherLocationKey = otherHalf.getWorld().getName() + "," + 
+                                    otherHalf.getX() + "," + 
+                                    otherHalf.getY() + "," + 
+                                    otherHalf.getZ();
+            Long otherExpiryTime = temporaryDoorAccess.get(otherLocationKey);
+            if (otherExpiryTime != null && System.currentTimeMillis() <= otherExpiryTime) {
+                return true;
+            }
+        }
+        
+        // Clean up expired access
+        if (expiryTime != null && System.currentTimeMillis() > expiryTime) {
+            temporaryDoorAccess.remove(locationKey);
+        }
+        
+        return false;
     }
 
     private void openDoor(Location location) {

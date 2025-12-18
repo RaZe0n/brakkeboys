@@ -7,6 +7,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.title.Title;
+import org.bukkit.Location;
 import org.bukkit.block.Chest;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.type.Door;
@@ -53,21 +54,22 @@ public class ChestProtectionListener implements Listener {
 
         // Check if the block is locked
         if (isChest && manager.isChestLocked(event.getClickedBlock().getLocation())) {
-            // Check if the player can access (owner or allowed user)
-            if (!manager.canAccessChest(event.getClickedBlock().getLocation(), player.getUniqueId())) {
-                // Check for temporary access (from passcode)
-                PasscodeGUIListener guiListener = plugin.getPasscodeGUIListener();
-                if (guiListener.hasTemporaryChestAccess(player.getUniqueId())) {
-                    // Allow access
-                    return;
-                }
-                
-                // Check if it has a passcode
-                if (manager.hasChestPasscode(event.getClickedBlock().getLocation())) {
-                    // Open passcode GUI
-                    event.setCancelled(true);
-                    guiListener.openPasscodeGUI(player, event.getClickedBlock().getLocation(), false);
-                } else {
+            PasscodeGUIListener guiListener = plugin.getPasscodeGUIListener();
+            
+            // Check for temporary access (from passcode entry)
+            if (guiListener.hasTemporaryChestAccess(player.getUniqueId())) {
+                // Allow access - player entered correct passcode
+                return;
+            }
+            
+            // If it has a passcode, everyone (including owner) must enter it
+            if (manager.hasChestPasscode(event.getClickedBlock().getLocation())) {
+                // Open passcode GUI for everyone
+                event.setCancelled(true);
+                guiListener.openPasscodeGUI(player, event.getClickedBlock().getLocation(), false);
+            } else {
+                // No passcode - check if the player can access (owner or allowed user)
+                if (!manager.canAccessChest(event.getClickedBlock().getLocation(), player.getUniqueId())) {
                     // Not allowed - cancel the interaction
                     event.setCancelled(true);
 
@@ -86,15 +88,22 @@ public class ChestProtectionListener implements Listener {
                 }
             }
         } else if (isDoor && manager.isDoorLocked(event.getClickedBlock().getLocation())) {
-            // Check if the player can access (owner or allowed user)
-            if (!manager.canAccessDoor(event.getClickedBlock().getLocation(), player.getUniqueId())) {
-                // Check if it has a passcode
-                if (manager.hasDoorPasscode(event.getClickedBlock().getLocation())) {
-                    // Open passcode GUI
-                    event.setCancelled(true);
-                    PasscodeGUIListener guiListener = plugin.getPasscodeGUIListener();
-                    guiListener.openPasscodeGUI(player, event.getClickedBlock().getLocation(), true);
-                } else {
+            PasscodeGUIListener guiListener = plugin.getPasscodeGUIListener();
+            
+            // Check for temporary access (from passcode entry) for this specific location
+            if (guiListener.hasTemporaryDoorAccess(event.getClickedBlock().getLocation())) {
+                // Allow access - player entered correct passcode
+                return;
+            }
+            
+            // If it has a passcode, everyone (including owner) must enter it
+            if (manager.hasDoorPasscode(event.getClickedBlock().getLocation())) {
+                // Open passcode GUI for everyone
+                event.setCancelled(true);
+                guiListener.openPasscodeGUI(player, event.getClickedBlock().getLocation(), true);
+            } else {
+                // No passcode - check if the player can access (owner or allowed user)
+                if (!manager.canAccessDoor(event.getClickedBlock().getLocation(), player.getUniqueId())) {
                     // Not allowed - cancel the interaction
                     event.setCancelled(true);
 
@@ -134,42 +143,88 @@ public class ChestProtectionListener implements Listener {
 
         // Check if the block is locked
         if (isChest && manager.isChestLocked(event.getBlock().getLocation())) {
-            // Check if the player can access (owner or allowed user)
-            if (!manager.canAccessChest(event.getBlock().getLocation(), player.getUniqueId())) {
-                // Not allowed - cancel the break
-                event.setCancelled(true);
+            Location blockLocation = event.getBlock().getLocation();
+            
+            // If it has a passcode, only owner can break it
+            if (manager.hasChestPasscode(blockLocation)) {
+                if (!manager.isChestOwner(blockLocation, player.getUniqueId())) {
+                    // Not owner - cancel the break
+                    event.setCancelled(true);
 
-                Title.Times times = Title.Times.times(
-                        Duration.ofMillis(200),
-                        Duration.ofMillis(2400),
-                        Duration.ofMillis(600)
-                );
+                    Title.Times times = Title.Times.times(
+                            Duration.ofMillis(200),
+                            Duration.ofMillis(2400),
+                            Duration.ofMillis(600)
+                    );
 
-                Title title = Title.title(
-                        Component.text("🔒 VERGRENDELD").color(NamedTextColor.RED).decorate(TextDecoration.BOLD),
-                        Component.text("Deze kist is niet van jou!").color(NamedTextColor.GRAY),
-                        times
-                );
-                player.showTitle(title);
+                    Title title = Title.title(
+                            Component.text("🔒 VERGRENDELD").color(NamedTextColor.RED).decorate(TextDecoration.BOLD),
+                            Component.text("Deze kist is niet van jou!").color(NamedTextColor.GRAY),
+                            times
+                    );
+                    player.showTitle(title);
+                }
+            } else {
+                // No passcode - check if the player can access (owner or allowed user)
+                if (!manager.canAccessChest(blockLocation, player.getUniqueId())) {
+                    // Not allowed - cancel the break
+                    event.setCancelled(true);
+
+                    Title.Times times = Title.Times.times(
+                            Duration.ofMillis(200),
+                            Duration.ofMillis(2400),
+                            Duration.ofMillis(600)
+                    );
+
+                    Title title = Title.title(
+                            Component.text("🔒 VERGRENDELD").color(NamedTextColor.RED).decorate(TextDecoration.BOLD),
+                            Component.text("Deze kist is niet van jou!").color(NamedTextColor.GRAY),
+                            times
+                    );
+                    player.showTitle(title);
+                }
             }
         } else if (isDoor && manager.isDoorLocked(event.getBlock().getLocation())) {
-            // Check if the player can access (owner or allowed user)
-            if (!manager.canAccessDoor(event.getBlock().getLocation(), player.getUniqueId())) {
-                // Not allowed - cancel the break
-                event.setCancelled(true);
+            Location blockLocation = event.getBlock().getLocation();
+            
+            // If it has a passcode, only owner can break it
+            if (manager.hasDoorPasscode(blockLocation)) {
+                if (!manager.isDoorOwner(blockLocation, player.getUniqueId())) {
+                    // Not owner - cancel the break
+                    event.setCancelled(true);
 
-                Title.Times times = Title.Times.times(
-                        Duration.ofMillis(200),
-                        Duration.ofMillis(2400),
-                        Duration.ofMillis(600)
-                );
+                    Title.Times times = Title.Times.times(
+                            Duration.ofMillis(200),
+                            Duration.ofMillis(2400),
+                            Duration.ofMillis(600)
+                    );
 
-                Title title = Title.title(
-                        Component.text("🔒 VERGRENDELD").color(NamedTextColor.RED).decorate(TextDecoration.BOLD),
-                        Component.text("Deze deur is niet van jou!").color(NamedTextColor.GRAY),
-                        times
-                );
-                player.showTitle(title);
+                    Title title = Title.title(
+                            Component.text("🔒 VERGRENDELD").color(NamedTextColor.RED).decorate(TextDecoration.BOLD),
+                            Component.text("Deze deur is niet van jou!").color(NamedTextColor.GRAY),
+                            times
+                    );
+                    player.showTitle(title);
+                }
+            } else {
+                // No passcode - check if the player can access (owner or allowed user)
+                if (!manager.canAccessDoor(blockLocation, player.getUniqueId())) {
+                    // Not allowed - cancel the break
+                    event.setCancelled(true);
+
+                    Title.Times times = Title.Times.times(
+                            Duration.ofMillis(200),
+                            Duration.ofMillis(2400),
+                            Duration.ofMillis(600)
+                    );
+
+                    Title title = Title.title(
+                            Component.text("🔒 VERGRENDELD").color(NamedTextColor.RED).decorate(TextDecoration.BOLD),
+                            Component.text("Deze deur is niet van jou!").color(NamedTextColor.GRAY),
+                            times
+                    );
+                    player.showTitle(title);
+                }
             }
         }
     }
