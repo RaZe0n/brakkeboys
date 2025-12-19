@@ -141,91 +141,39 @@ public class ChestProtectionListener implements Listener {
             return;
         }
 
-        // Check if the block is locked
+        // Check if the block is locked - locked blocks are unbreakable by everyone
         if (isChest && manager.isChestLocked(event.getBlock().getLocation())) {
-            Location blockLocation = event.getBlock().getLocation();
-            
-            // If it has a passcode, only owner can break it
-            if (manager.hasChestPasscode(blockLocation)) {
-                if (!manager.isChestOwner(blockLocation, player.getUniqueId())) {
-                    // Not owner - cancel the break
-                    event.setCancelled(true);
+            // Locked chests are unbreakable - cancel for everyone
+            event.setCancelled(true);
 
-                    Title.Times times = Title.Times.times(
-                            Duration.ofMillis(200),
-                            Duration.ofMillis(2400),
-                            Duration.ofMillis(600)
-                    );
+            Title.Times times = Title.Times.times(
+                    Duration.ofMillis(200),
+                    Duration.ofMillis(2400),
+                    Duration.ofMillis(600)
+            );
 
-                    Title title = Title.title(
-                            Component.text("🔒 VERGRENDELD").color(NamedTextColor.RED).decorate(TextDecoration.BOLD),
-                            Component.text("Deze kist is niet van jou!").color(NamedTextColor.GRAY),
-                            times
-                    );
-                    player.showTitle(title);
-                }
-            } else {
-                // No passcode - check if the player can access (owner or allowed user)
-                if (!manager.canAccessChest(blockLocation, player.getUniqueId())) {
-                    // Not allowed - cancel the break
-                    event.setCancelled(true);
-
-                    Title.Times times = Title.Times.times(
-                            Duration.ofMillis(200),
-                            Duration.ofMillis(2400),
-                            Duration.ofMillis(600)
-                    );
-
-                    Title title = Title.title(
-                            Component.text("🔒 VERGRENDELD").color(NamedTextColor.RED).decorate(TextDecoration.BOLD),
-                            Component.text("Deze kist is niet van jou!").color(NamedTextColor.GRAY),
-                            times
-                    );
-                    player.showTitle(title);
-                }
-            }
+            Title title = Title.title(
+                    Component.text("🔒 VERGRENDELD").color(NamedTextColor.RED).decorate(TextDecoration.BOLD),
+                    Component.text("Deze kist is vergrendeld!").color(NamedTextColor.GRAY),
+                    times
+            );
+            player.showTitle(title);
         } else if (isDoor && manager.isDoorLocked(event.getBlock().getLocation())) {
-            Location blockLocation = event.getBlock().getLocation();
-            
-            // If it has a passcode, only owner can break it
-            if (manager.hasDoorPasscode(blockLocation)) {
-                if (!manager.isDoorOwner(blockLocation, player.getUniqueId())) {
-                    // Not owner - cancel the break
-                    event.setCancelled(true);
+            // Locked doors are unbreakable - cancel for everyone
+            event.setCancelled(true);
 
-                    Title.Times times = Title.Times.times(
-                            Duration.ofMillis(200),
-                            Duration.ofMillis(2400),
-                            Duration.ofMillis(600)
-                    );
+            Title.Times times = Title.Times.times(
+                    Duration.ofMillis(200),
+                    Duration.ofMillis(2400),
+                    Duration.ofMillis(600)
+            );
 
-                    Title title = Title.title(
-                            Component.text("🔒 VERGRENDELD").color(NamedTextColor.RED).decorate(TextDecoration.BOLD),
-                            Component.text("Deze deur is niet van jou!").color(NamedTextColor.GRAY),
-                            times
-                    );
-                    player.showTitle(title);
-                }
-            } else {
-                // No passcode - check if the player can access (owner or allowed user)
-                if (!manager.canAccessDoor(blockLocation, player.getUniqueId())) {
-                    // Not allowed - cancel the break
-                    event.setCancelled(true);
-
-                    Title.Times times = Title.Times.times(
-                            Duration.ofMillis(200),
-                            Duration.ofMillis(2400),
-                            Duration.ofMillis(600)
-                    );
-
-                    Title title = Title.title(
-                            Component.text("🔒 VERGRENDELD").color(NamedTextColor.RED).decorate(TextDecoration.BOLD),
-                            Component.text("Deze deur is niet van jou!").color(NamedTextColor.GRAY),
-                            times
-                    );
-                    player.showTitle(title);
-                }
-            }
+            Title title = Title.title(
+                    Component.text("🔒 VERGRENDELD").color(NamedTextColor.RED).decorate(TextDecoration.BOLD),
+                    Component.text("Deze deur is vergrendeld!").color(NamedTextColor.GRAY),
+                    times
+            );
+            player.showTitle(title);
         }
     }
 }

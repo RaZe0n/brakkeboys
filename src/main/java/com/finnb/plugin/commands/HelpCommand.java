@@ -44,6 +44,13 @@ public class HelpCommand implements CommandExecutor {
         sender.sendMessage(formatCommand("/add <speler>", "Geef een speler toegang tot je kist/deur"));
         sender.sendMessage(Component.empty());
 
+        sender.sendMessage(Component.text("Laser Alarm Commando's:")
+                .color(NamedTextColor.YELLOW)
+                .decorate(TextDecoration.BOLD));
+        sender.sendMessage(formatCommand("/laser", "Zet laser alarm posities"));
+        sender.sendMessage(formatCommand("/removelaser", "Verwijder je laser alarm"));
+        sender.sendMessage(Component.empty());
+
         // Admin commands (only for operators)
         if (sender.isOp() || sender.hasPermission("brakkeboyscore.admin")) {
             sender.sendMessage(Component.text("Admin Commando's:")
@@ -51,6 +58,7 @@ public class HelpCommand implements CommandExecutor {
                     .decorate(TextDecoration.BOLD));
             sender.sendMessage(formatCommand("/setmaxlocks <speler> <aantal>", "Stel max kisten in voor een speler"));
             sender.sendMessage(formatCommand("/setmaxdoorlocks <speler> <aantal>", "Stel max deuren in voor een speler"));
+            sender.sendMessage(formatCommand("/setmaxlasers <speler> <aantal>", "Stel max lasers in voor een speler"));
             sender.sendMessage(formatCommand("/resetlocks <speler>", "Reset alle sloten van een speler"));
             sender.sendMessage(Component.empty());
         }

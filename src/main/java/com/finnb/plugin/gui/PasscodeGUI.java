@@ -109,12 +109,10 @@ public class PasscodeGUI {
         ItemStack head = new ItemStack(Material.PLAYER_HEAD);
         SkullMeta meta = (SkullMeta) head.getItemMeta();
         if (meta != null) {
-            // Set the texture using reflection
-            // GameProfile requires a non-null name, so we use a dummy name
+            // Create GameProfile with texture for 1.20+
             GameProfile profile = new GameProfile(UUID.randomUUID(), "NumberHead" + number);
             
             // Use reflection to set properties to avoid version compatibility issues
-            // Try multiple approaches to handle different authlib versions
             boolean textureSet = false;
             
             // Approach 1: Try direct field access (works in most versions)
@@ -146,6 +144,7 @@ public class PasscodeGUI {
                 }
             }
             
+            // Set the profile using reflection (works across Paper versions)
             try {
                 Field profileField = meta.getClass().getDeclaredField("profile");
                 profileField.setAccessible(true);

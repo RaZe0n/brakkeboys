@@ -30,6 +30,10 @@ commands:
     description: Set the maximum number of doors/trapdoors/fence gates a player can lock
     usage: /<command> <player> <amount>
     permission: brakkeboyscore.setmaxdoorlocks
+  setmaxlasers:
+    description: Set the maximum number of lasers a player can have
+    usage: /<command> <player> <amount>
+    permission: brakkeboyscore.setmaxlasers
   resetlocks:
     description: Reset all chest and door locks for a player
     usage: /<command> <player>
@@ -43,4 +47,10 @@ commands:
     aliases:
       - bbc
       - brakkeboyscore
+  laser:
+    description: Set laser alarm positions
+    usage: /<command>
+  removelaser:
+    description: Remove your laser alarm
+    usage: /<command>
 

@@ -15,13 +15,16 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -34,9 +37,44 @@ public class PasscodeGUIListener implements Listener {
     private final Map<UUID, Boolean> playerIsDoor = new HashMap<>(); // Player UUID -> is door
     private final Set<UUID> temporaryChestAccess = new HashSet<>(); // Players with temporary chest access
     private final Map<String, Long> temporaryDoorAccess = new HashMap<>(); // Location string -> timestamp when access expires
+    private BukkitTask cleanupTask;
 
     public PasscodeGUIListener(BrakkeBoysCORE plugin) {
         this.plugin = plugin;
+        // Start periodic cleanup task for expired door access
+        startCleanupTask();
+    }
+
+    /**
+     * Start periodic cleanup task for expired door access entries
+     */
+    private void startCleanupTask() {
+        cleanupTask = new BukkitRunnable() {
+            @Override
+            public void run() {
+                long currentTime = System.currentTimeMillis();
+                temporaryDoorAccess.entrySet().removeIf(entry -> currentTime > entry.getValue());
+            }
+        }.runTaskTimer(plugin, 200L, 200L); // Run every 10 seconds
+    }
+
+    /**
+     * Cancel cleanup task (called on plugin disable)
+     */
+    public void cancelTasks() {
+        if (cleanupTask != null && !cleanupTask.isCancelled()) {
+            cleanupTask.cancel();
+        }
+    }
+
+    /**
+     * Create location key efficiently
+     */
+    private String createLocationKey(Location location) {
+        return location.getWorld().getName() + "," + 
+               location.getBlockX() + "," + 
+               location.getBlockY() + "," + 
+               location.getBlockZ();
     }
 
     @EventHandler
@@ -85,10 +123,7 @@ public class PasscodeGUIListener implements Listener {
 
                 if (isDoor) {
                     // Grant temporary door access (5 seconds) for this specific location and the other half
-                    String locationKey = blockLocation.getWorld().getName() + "," + 
-                                       blockLocation.getBlockX() + "," + 
-                                       blockLocation.getBlockY() + "," + 
-                                       blockLocation.getBlockZ();
+                    String locationKey = createLocationKey(blockLocation);
                     long expiryTime = System.currentTimeMillis() + 5000;
                     temporaryDoorAccess.put(locationKey, expiryTime);
                     
@@ -104,10 +139,7 @@ public class PasscodeGUIListener implements Listener {
                         } else {
                             otherHalf = block.getRelative(0, -1, 0);
                         }
-                        otherLocationKey = otherHalf.getWorld().getName() + "," + 
-                                         otherHalf.getX() + "," + 
-                                         otherHalf.getY() + "," + 
-                                         otherHalf.getZ();
+                        otherLocationKey = createLocationKey(otherHalf.getLocation());
                         temporaryDoorAccess.put(otherLocationKey, expiryTime);
                     }
                     
@@ -116,13 +148,13 @@ public class PasscodeGUIListener implements Listener {
                     
                     // Open the door
                     openDoor(blockLocation);
-                    // Close after 5 seconds
+                    // Close after 5 seconds (cleanup task will handle removal)
                     new BukkitRunnable() {
                         @Override
                         public void run() {
                             closeDoor(blockLocation);
+                            // Cleanup task will remove expired entries, but remove immediately for consistency
                             temporaryDoorAccess.remove(locationKey);
-                            // Also remove the other half
                             if (finalOtherLocationKey != null) {
                                 temporaryDoorAccess.remove(finalOtherLocationKey);
                             }
@@ -194,13 +226,12 @@ public class PasscodeGUIListener implements Listener {
     }
 
     public boolean hasTemporaryDoorAccess(Location location) {
+        long currentTime = System.currentTimeMillis();
+        
         // Check this location
-        String locationKey = location.getWorld().getName() + "," + 
-                            location.getBlockX() + "," + 
-                            location.getBlockY() + "," + 
-                            location.getBlockZ();
+        String locationKey = createLocationKey(location);
         Long expiryTime = temporaryDoorAccess.get(locationKey);
-        if (expiryTime != null && System.currentTimeMillis() <= expiryTime) {
+        if (expiryTime != null && currentTime <= expiryTime) {
             return true;
         }
         
@@ -216,22 +247,24 @@ public class PasscodeGUIListener implements Listener {
                 otherHalf = block.getRelative(0, -1, 0);
             }
             
-            String otherLocationKey = otherHalf.getWorld().getName() + "," + 
-                                    otherHalf.getX() + "," + 
-                                    otherHalf.getY() + "," + 
-                                    otherHalf.getZ();
+            String otherLocationKey = createLocationKey(otherHalf.getLocation());
             Long otherExpiryTime = temporaryDoorAccess.get(otherLocationKey);
-            if (otherExpiryTime != null && System.currentTimeMillis() <= otherExpiryTime) {
+            if (otherExpiryTime != null && currentTime <= otherExpiryTime) {
                 return true;
             }
         }
         
-        // Clean up expired access
-        if (expiryTime != null && System.currentTimeMillis() > expiryTime) {
-            temporaryDoorAccess.remove(locationKey);
-        }
-        
         return false;
+    }
+
+    @EventHandler
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        // Clean up player data when they leave
+        UUID playerUuid = event.getPlayer().getUniqueId();
+        playerInputs.remove(playerUuid);
+        playerBlockLocations.remove(playerUuid);
+        playerIsDoor.remove(playerUuid);
+        temporaryChestAccess.remove(playerUuid);
     }
 
     private void openDoor(Location location) {

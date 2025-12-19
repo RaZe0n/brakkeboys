@@ -50,7 +50,7 @@ public class LockCommand implements CommandExecutor {
                         targetBlock.getType().name().contains("FENCE_GATE");
 
         if (!isChest && !isDoor) {
-            player.sendMessage(Component.text("Je moet naar een kist, deur, valdeur of hekpoort kijken!").color(NamedTextColor.RED));
+            player.sendMessage(Component.text("Je moet naar een kist, deur, trapdoor of fence gate kijken!").color(NamedTextColor.RED));
             return true;
         }
 
@@ -66,7 +66,7 @@ public class LockCommand implements CommandExecutor {
             passcode = args[0];
             // Validate passcode is numeric
             if (!passcode.matches("\\d+")) {
-                player.sendMessage(Component.text("Pincode moet alleen cijfers bevatten!").color(NamedTextColor.RED));
+                player.sendMessage(Component.text("Pincode mag alleen cijfers bevatten!").color(NamedTextColor.RED));
                 return true;
             }
         }
@@ -88,7 +88,7 @@ public class LockCommand implements CommandExecutor {
                 manager.unlockChest(block.getLocation());
 
                 Title title = Title.title(
-                        Component.text("🔓 KIST ONTVERGENDELD").color(NamedTextColor.GREEN).decorate(TextDecoration.BOLD),
+                        Component.text("🔓 KIST UNLOCKED").color(NamedTextColor.GREEN).decorate(TextDecoration.BOLD),
                         Component.text("Kist is nu vrij toegankelijk").color(NamedTextColor.GRAY),
                         times
                 );
@@ -131,7 +131,7 @@ public class LockCommand implements CommandExecutor {
 
                 String blockType = getBlockTypeName(block);
                 Title title = Title.title(
-                        Component.text("🔓 " + blockType.toUpperCase() + " ONTVERGENDELD").color(NamedTextColor.GREEN).decorate(TextDecoration.BOLD),
+                        Component.text("🔓 " + blockType.toUpperCase() + " UNLOCKED").color(NamedTextColor.GREEN).decorate(TextDecoration.BOLD),
                         Component.text(blockType + " is nu vrij toegankelijk").color(NamedTextColor.GRAY),
                         times
                 );
